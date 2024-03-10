@@ -1,0 +1,1067 @@
+--Created by Lykeesh--
+  --DaGDNoob#8275--
+
+warn("[UIBreak2] Starting UIBreak2")
+if _G.UIBreak2 == true then
+	error("[UIBreak2] Error: An instance of UIBreak2 is already running")
+end
+if game:GetService("Players").LocalPlayer.Character == nil then
+	error("[UIBreak2] Error: Roblox character not loaded, please load your character")
+end
+
+-- Modules
+local Mods = {}
+local Utils = {}
+Utils.FileEnabled = false
+function Utils.SeperateArgs(str)
+	local a = {}
+	for token in string.gmatch(str,"[^%s]+") do
+		table.insert(a,token)
+	end
+	return a
+end
+function Utils.Split(str,seperator)
+	local a = {}
+	for token in string.gmatch(str,"[^*" .. seperator .."]+") do
+		table.insert(a,token)
+	end
+	return a
+end
+function Utils.FindArgs(tbl,str)
+	for b,a in pairs(tbl) do
+		if a == str then
+			return b
+		end
+	end
+	return false
+end
+function Utils.ParseRGB(str)
+	local Color = Utils.Split(str,",")
+	return Color3.fromRGB(Color[1],Color[2],Color[3])
+end
+function Utils.GetRGBFromColor3(str)
+	local RGB = Utils.Split(str,",")
+	local R = Utils.Split(tostring(tonumber(RGB[1])*255),".")[1]
+	local G = Utils.Split(tostring(tonumber(RGB[2])*255),".")[1]
+	local B = Utils.Split(tostring(tonumber(RGB[3])*255),".")[1]
+	return R .. "," .. G .. "," .. B
+end
+function Utils.RobloxNotification(str)
+	game:GetService("StarterGui"):SetCore("SendNotification",{
+		Title = "UIBreak v2",
+		Text = tostring(str),
+		Button1 = "OK",
+	})
+end
+function Utils.Log(str)
+	print("[UIBreak2] " .. tostring(str))
+end
+function Utils.WLog(str)
+	warn("[UIBreak2] " .. tostring(str))
+end
+local OutputFileWarning = false
+function Utils.CheckFileEnabled()
+	if readfile and writefile then
+		Utils.FileEnabled = true
+		return true
+	else
+		if not OutputFileWarning then
+			Utils.WLog("Saving files is disabled because your exploit does not support saving files.")
+		end
+		OutputFileWarning = true
+		return false
+	end
+end
+function Utils.ReadSaveData(str)
+	if Utils.FileEnabled then
+		if isfile then
+            if isfile(str) then
+                return game:GetService("HttpService"):JSONDecode(readfile(str))
+            else
+                writefile(str,"{}")
+                return {}
+            end
+		else
+			local function NoSaveData()
+				writefile(str,"{}")
+                return {}
+			end
+			if readfile(str) == "" then
+				NoSaveData()
+			elseif readfile(str) == nil then
+				NoSaveData()
+            else
+               return game:GetService("HttpService"):JSONDecode(readfile(str)) 
+            end
+		end
+	end
+	return {}
+end
+function Utils.WriteSaveData(UIBreak2)
+	if Utils.FileEnabled then
+		writefile(UIBreak2.FileName,game:GetService("HttpService"):JSONEncode(UIBreak2.SaveData))
+	end
+end
+function Utils.ParentOptions(UIBreak,Mod,obj) --why
+	for a,b in pairs(Mod) do
+		if string.sub(a,0,5) ~= "Boxes" then
+			if string.sub(a,0,4) == "Text" then
+				b.Parent = obj
+				if obj == nil then
+					UIBreak.Options.CanvasSize = UDim2.new(0,0,0,0)
+				else
+					UIBreak.Options.CanvasSize = UDim2.new(0,0,0,UIBreak.Options.CanvasSize.Y.Offset + b.Size.Y.Offset + 5)
+				end
+			elseif string.sub(a,0,3) == "Box" then
+				b.Parent = obj
+				if obj == nil then
+					UIBreak.Options.CanvasSize = UDim2.new(0,0,0,0)
+				else
+					UIBreak.Options.CanvasSize = UDim2.new(0,0,0,UIBreak.Options.CanvasSize.Y.Offset + b.Size.Y.Offset + 5)
+				end
+			elseif string.sub(a,0,13) ~= "ButtonEnabled" then
+				if string.sub(a,0,7) ~= "Buttons" then
+					if string.sub(a,0,7) ~= "Button" then
+						if string.sub(a,0,6) == "Button" then
+							b.Parent = obj
+							if obj == nil then
+								UIBreak.Options.CanvasSize = UDim2.new(0,0,0,0)
+							else
+								UIBreak.Options.CanvasSize = UDim2.new(0,0,0,UIBreak.Options.CanvasSize.Y.Offset + b.Size.Y.Offset + 5)
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+function Utils.GetBoxes(Mod)
+	local Boxes = {}
+	for a,b in pairs(Mod) do
+		if string.sub(a,0,5) ~= "Boxes" then
+			if string.sub(a,0,3) == "Box" then
+				Boxes[b.PlaceholderText] = b.Text
+			elseif string.sub(a,0,13) ~= "ButtonEnabled" then
+				if string.sub(a,0,7) ~= "Buttons" then
+					if string.sub(a,0,7) ~= "Button" then
+						if string.sub(a,0,6) == "Button" then
+							Boxes[b.Text] = Mod["ButtonEnabled" .. string.sub(a,7,-1)]
+						end
+					end
+				end
+			end
+		end
+	end
+	return Boxes
+end
+
+local DisableSmall = false
+local GuiColorDark = Color3.fromRGB(50,50,50)
+local GuiColorLight = Color3.fromRGB(100,100,100)
+local GuiColorText = Color3.fromRGB(255,255,255)
+local GuiColorExit = Color3.fromRGB(255,0,0)
+local GuiColorMinimize = Color3.fromRGB(255,255,0)
+local GuiColorEnabled = Color3.fromRGB(100,200,100)
+local UIBreak2 = {}
+UIBreak2.Version = "19062021.1"
+UIBreak2.Release = "Custom"
+UIBreak2.FileName = "UIBreak2.txt"
+UIBreak2.SaveData = {}
+function UIBreak2.New(args)
+	local CurrentArgs = Utils.SeperateArgs(args)
+	local UIBreak = {}
+	
+	local a = Instance.new("ScreenGui")
+	a.Name = "UIBreak2"
+	a.DisplayOrder = 1000
+	a.ResetOnSpawn = false
+	if Utils.FindArgs(CurrentArgs,"--studio") then
+		a.Parent = game:GetService("Players").LocalPlayer.PlayerGui
+	else
+		a.Parent = game:GetService("CoreGui")
+	end
+	local FileNamePos = Utils.FindArgs(CurrentArgs,"--file")
+	if FileNamePos then
+		Utils.CheckFileEnabled()
+		if CurrentArgs[FileNamePos+1] == nil then
+		elseif string.sub(CurrentArgs[FileNamePos+1],0,2) ~= "--" then
+			UIBreak2.FileName = CurrentArgs[FileNamePos+1]
+		end
+		UIBreak2.SaveData = Utils.ReadSaveData(UIBreak2.FileName)
+		if not UIBreak2.SaveData.UIBreak then
+			UIBreak2.SaveData.UIBreak = {}
+		end
+		if UIBreak2.SaveData.UIBreak.GuiColorLight then
+			GuiColorLight = Utils.ParseRGB(UIBreak2.SaveData.UIBreak.GuiColorLight)
+		end
+		if UIBreak2.SaveData.UIBreak.GuiColorDark then
+			GuiColorDark = Utils.ParseRGB(UIBreak2.SaveData.UIBreak.GuiColorDark)
+		end
+		if UIBreak2.SaveData.UIBreak.GuiColorText then
+			GuiColorText = Utils.ParseRGB(UIBreak2.SaveData.UIBreak.GuiColorText)
+		end
+		if UIBreak2.SaveData.UIBreak.GuiColorExit then
+			GuiColorExit = Utils.ParseRGB(UIBreak2.SaveData.UIBreak.GuiColorExit)
+		end
+		if UIBreak2.SaveData.UIBreak.GuiColorMinimize then
+			GuiColorMinimize = Utils.ParseRGB(UIBreak2.SaveData.UIBreak.GuiColorMinimize)
+		end
+		if UIBreak2.SaveData.UIBreak.GuiColorEnabled then
+			GuiColorEnabled = Utils.ParseRGB(UIBreak2.SaveData.UIBreak.GuiColorEnabled)
+		end
+	end
+	if Utils.FindArgs(CurrentArgs,"--disablesmall") then
+		DisableSmall = true
+	end
+	UIBreak.UIBreak = a
+	
+	local b = Instance.new("TextButton")
+	b.Name = "Topbar"
+	b.AnchorPoint = Vector2.new(0.5,0.5)
+	b.AutoButtonColor = false
+	b.BackgroundColor3 = GuiColorDark
+	b.BorderSizePixel = 0
+	b.Position = UDim2.new(0.5,0,0.5,0)
+	b.Size = UDim2.new(0,400,0,20)
+	b.Font = Enum.Font.SourceSansBold
+	b.Text = "UIBreak v2"
+	b.TextColor3 = GuiColorText
+	b.TextScaled = true
+	b.TextXAlignment = Enum.TextXAlignment.Left
+	b.Parent = a
+	UIBreak.Topbar = b
+	
+	local Start
+	local WindowStart
+	local Dragging
+	local Input
+	local function UpdatePos(Pos)
+		local Delta = Pos.Position - Start
+		b.Position = UDim2.new(WindowStart.X.Scale,WindowStart.X.Offset + Delta.X,WindowStart.Y.Scale,WindowStart.Y.Offset + Delta.Y)
+	end
+	b.InputBegan:Connect(function(Type)
+		if Type.UserInputType == Enum.UserInputType.MouseButton1 then
+			Dragging = true
+			Start = Type.Position
+			WindowStart = b.Position
+			Type.Changed:Connect(function()
+				if Type.UserInputState == Enum.UserInputState.End then
+					Dragging = false
+				end
+			end)
+		end
+	end)
+	b.InputChanged:Connect(function(Type)
+		if Type.UserInputType == Enum.UserInputType.MouseMovement then
+			Input = Type
+		end
+	end)
+	game:GetService("UserInputService").InputChanged:Connect(function(Type)
+		if Type == Input and Dragging then
+			UpdatePos(Type)
+		end
+	end)
+	
+	local c = Instance.new("TextButton")
+	c.Name = "Close"
+	c.BackgroundColor3 = GuiColorExit
+	c.BorderSizePixel = 0
+	c.Position = UDim2.new(1,-20,1,-20)
+	c.Size = UDim2.new(0,20,0,20)
+	c.Text = ""
+	c.Parent = b
+	UIBreak.Close = c
+	c.MouseButton1Click:Connect(function()
+		UIBreak2.Terminate(UIBreak,Mods)
+	end)
+
+	local d = c:Clone()
+	d.Name = "Minimize"
+	d.BackgroundColor3 = GuiColorMinimize
+	d.Position = UDim2.new(1,-40,1,-20)
+	d.Parent = b
+	UIBreak.Minimize = d
+	d.MouseButton1Click:Connect(function()
+		UIBreak2.Minimize(UIBreak)
+	end)
+	
+	local e = Instance.new("TextButton")
+	e.Name = "Window"
+	e.BackgroundColor3 = GuiColorDark
+	e.BackgroundTransparency = 0.25
+	e.AutoButtonColor = false
+	e.BorderSizePixel = 0
+	e.Position = UDim2.new(0,0,1,0)
+	e.Size = UDim2.new(1,0,0,200)
+	e.Text = ""
+	e.Parent = b
+	UIBreak.Window = e	
+	
+	local f = Instance.new("ScrollingFrame")
+	f.Name = "List"
+	f.BackgroundColor3 = GuiColorLight
+	f.BackgroundTransparency = 0.5
+	f.BorderSizePixel = 0
+	f.Position = UDim2.new(0,3,0,3)
+	f.Size = UDim2.new(0,194,0,194)
+	f.CanvasSize = UDim2.new(0,0,0,5)
+	f.ScrollBarThickness = 5
+	f.ScrollingDirection = Enum.ScrollingDirection.Y
+	f.Parent = e
+	UIBreak.List = f
+	
+	local g = Instance.new("UIListLayout")
+	g.Padding = UDim.new(0,5)
+	g.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	g.Parent = f
+	
+	local h = Instance.new("Frame")
+	h.Name = "! "
+	h.BackgroundTransparency = 1
+	h.Size = UDim2.new(0,0,0,0)
+	h.Parent = f
+	
+	local i = f:Clone()
+	i.Name = "Options"
+    i.UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	i.Position = UDim2.new(0.5,3,0,3)
+	i.Parent = e
+	UIBreak.Options = i
+	
+	local j = Instance.new("TextLabel")
+	j.Name = "Build"
+	j.BackgroundTransparency = 1
+	j.Position = UDim2.new(0,0,1,0)
+	j.Size = UDim2.new(1,0,0,15)
+	j.Font = Enum.Font.SourceSans
+	j.TextColor3 = GuiColorText
+	j.Text = UIBreak2.Release .. " Release | Build " .. UIBreak2.Version
+	j.TextScaled = true
+	j.TextXAlignment = Enum.TextXAlignment.Right
+	j.Parent = e
+	UIBreak.Build = j
+	
+	local k = Instance.new("TextButton")
+	k.Name = "Small"
+	k.BackgroundColor3 = GuiColorLight
+	k.BorderSizePixel = 0
+	k.AnchorPoint = Vector2.new(0.5,0)
+	k.Position = UDim2.new(0.5,0,0,-36)
+	k.Size = UDim2.new(0.2,0,0,36)
+	k.Font = Enum.Font.SourceSansSemibold
+	k.Text = "UIBreak v2"
+	k.TextColor3 = GuiColorText
+	k.TextScaled = true
+	k.Parent = a
+	k.Visible = false
+	UIBreak.Small = k
+	k.MouseButton1Click:Connect(function()
+		k.Visible = false
+		b.Visible = true
+	end)
+	local function CheckBackslash()
+		if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.BackSlash) == true then
+			k.Visible = false
+			b.Visible = true
+		end
+	end
+	game:GetService("RunService"):BindToRenderStep("backslash",1,CheckBackslash)
+	
+	_G.UIBreak2 = true
+	return UIBreak
+end
+function UIBreak2.UpdateColors(UIBreak)
+	UIBreak.Topbar.TextColor3 = GuiColorText
+	UIBreak.Topbar.BackgroundColor3 = GuiColorDark
+	UIBreak.Close.BackgroundColor3 = GuiColorExit
+	UIBreak.Minimize.BackgroundColor3 = GuiColorMinimize
+	UIBreak.Window.BackgroundColor3 = GuiColorDark
+	UIBreak.List.BackgroundColor3 = GuiColorLight
+	UIBreak.Options.BackgroundColor3 = GuiColorLight
+	UIBreak.Build.TextColor3 = GuiColorText
+	UIBreak.Small.BackgroundColor3 = GuiColorLight
+	UIBreak.Small.TextColor3 = GuiColorText
+	for _,a in pairs(Mods)do
+		if a.Enabled then
+			a.Button.BackgroundColor3 = GuiColorEnabled
+		else
+			a.Button.BackgroundColor3 = GuiColorLight
+		end
+		a.Button.TextColor3 = GuiColorText
+		for b,c in pairs(a)do
+			if string.sub(b,0,4) == "Text" then
+				c.TextColor3 = GuiColorText
+			elseif string.sub(b,0,3) == "Box" then
+				if typeof(c) ~= "number" then
+					c.TextColor3 = GuiColorText
+					c.BackgroundColor3 = GuiColorLight
+				end
+			end
+		end
+	end
+	Utils.Log("Updated UI colors.")
+end
+function UIBreak2.Terminate(UIBreak,Mods)
+	for _,a in pairs(Mods)do
+		a.Function(false,Utils.GetBoxes(a))
+	end
+	Utils.WLog("Terminating UIBreak2")
+	_G.UIBreak2 = false
+	for aa,a in pairs(UIBreak)do
+        if aa ~= "ShowingOptions" then
+            a:Destroy()
+        end
+
+	end
+end
+function UIBreak2.Minimize(UIBreak)
+	UIBreak.Topbar.Visible = false
+	if not DisableSmall then
+		UIBreak.Small.Visible = true
+	end
+end
+function UIBreak2.NewMod(UIBreak,str,func)
+	local Mod = {}
+	local a = Instance.new("TextButton")
+	a.Name = str
+	a.BorderSizePixel = 0
+	a.BackgroundColor3 = GuiColorLight
+	a.Size = UDim2.new(0.9,0,0,30)
+	a.Font = Enum.Font.SourceSans
+	a.Text = str
+	a.TextScaled = true
+	a.TextColor3 = GuiColorText
+	a.Parent = UIBreak.List
+	Mod.Button = a
+	Mod.Layout = 0
+	Mod.Boxes = 0
+	Mod.Buttons = 0
+	Mod.Function = func
+	Mod.Enabled = false
+	Mod.ShowingOptions = false
+	UIBreak2.AddOption(UIBreak,Mod,"Text",str)
+	UIBreak.List.CanvasSize = UDim2.new(0,0,0,UIBreak.List.CanvasSize.Y.Offset + 35)
+	a.MouseButton1Click:Connect(function()
+		if UIBreak.ShowingOptions == Mod then
+			if Mod.Enabled == false then
+				Mod.Button.BackgroundColor3 = GuiColorEnabled
+				Mod.Enabled = true
+				local b = Utils.GetBoxes(Mod)
+				Mod.Function(true,b)
+			else
+				Mod.Button.BackgroundColor3 = GuiColorLight
+				Mod.Enabled = false
+				local b = Utils.GetBoxes(Mod)
+				Mod.Function(false,b)
+			end
+			
+		elseif UIBreak.ShowingOptions == nil then
+			UIBreak2.ShowOptions(UIBreak,Mod)
+		else
+			UIBreak2.HideOptions(UIBreak,UIBreak.ShowingOptions)
+			UIBreak2.ShowOptions(UIBreak,Mod)
+		end
+	end)
+	table.insert(Mods,Mod)
+	
+	return Mod
+end
+function UIBreak2.AddOption(UIBreak,Mod,obj,str)
+	local a
+	if obj == "Text" then
+		a = Instance.new("TextLabel")
+		a.Name = Mod.Layout
+		a.TextSize = 30
+		a.LayoutOrder = Mod.Layout
+		Mod.Layout = Mod.Layout + 1
+		a.Font = Enum.Font.SourceSans
+		a.Parent = UIBreak.Options
+		a.TextWrapped = true
+		a.Text = str
+		a.Size = UDim2.new(1,0,0,30)
+		a.BackgroundTransparency = 1
+		local b = 30
+		while a.TextFits ~= true do
+			b = b + 30
+			a.Size = UDim2.new(1,0,0,b)
+			wait()
+		end
+		Mod["Text" .. Mod.Layout] = a
+	
+	elseif obj == "Box" then
+		a = Instance.new("TextBox")
+		a.Name = Mod.Layout
+		a.LayoutOrder = Mod.Layout
+		Mod.Layout = Mod.Layout + 1
+		a.Font = Enum.Font.SourceSans
+		a.Parent = UIBreak.Options
+		a.TextScaled = true
+		a.PlaceholderText = str
+		a.PlaceholderColor3 = Color3.fromRGB(150,150,150)
+		a.Text = ""
+		a.ClearTextOnFocus = false
+		a.Size = UDim2.new(1,0,0,30)
+		a.BackgroundColor3 = GuiColorLight
+		a.BorderSizePixel = 0
+		Mod.Boxes = Mod.Boxes + 1
+		Mod["Box" .. Mod.Boxes] = a
+		
+	elseif obj == "Button" then
+		a = Instance.new("TextButton")
+		a.Name = Mod.Layout
+		a.TextScaled = true
+		a.LayoutOrder = Mod.Layout
+        Mod.Layout = Mod.Layout + 1
+		a.Font = Enum.Font.SourceSans
+		a.Text = str
+		a.Size = UDim2.new(1,0,0,30)
+		a.BackgroundColor3 = GuiColorLight
+		a.BorderSizePixel = 0
+		Mod.Buttons = Mod.Buttons + 1
+		Mod["Button" .. Mod.Buttons] = a
+		Mod["ButtonEnabled" .. Mod.Buttons] = false
+		a.MouseButton1Click:Connect(function()
+			if Mod["ButtonEnabled" .. Mod.Buttons] then
+				a.BackgroundColor3 = GuiColorLight
+				Mod["ButtonEnabled" .. Mod.Buttons] = false
+			else
+				a.BackgroundColor3 = GuiColorEnabled
+				Mod["ButtonEnabled" .. Mod.Buttons] = true
+			end
+		end)
+	else
+		Utils.Log("Not a valid option")
+		return false
+	end
+
+	a.TextColor3 = GuiColorText
+	a.Parent = nil
+	
+	return true
+end
+function UIBreak2.ShowOptions(UIBreak,Mod)
+	Utils.ParentOptions(UIBreak,Mod,UIBreak.Options)
+	Mod.ShowingOptions = true
+	UIBreak.ShowingOptions = Mod
+end
+function UIBreak2.HideOptions(UIBreak,Mod)
+	Utils.ParentOptions(UIBreak,Mod,nil)
+	Mod.ShowingOptions = false
+	UIBreak.ShowingOptions = nil
+end
+function UIBreak2.LoadDefaultMods(UIBreak)
+	--UIBREAK MODS
+	local function Credits(bool,options)
+		if bool then
+			game:GetService("Players").LocalPlayer:Kick("\nYou have been banned!\n\nReason: Exploiting\n")
+		end
+	end
+	local CreditsMod = UIBreak2.NewMod(UIBreak,"! Credits",Credits)
+	UIBreak2.AddOption(UIBreak,CreditsMod,"Text","Created by Lykeesh\nDaGDNoob#8275\n" .. UIBreak2.Release .. " Release\nBuild " .. UIBreak2.Version)
+	
+	if Utils.CheckFileEnabled() then
+		local function Settings(bool,options)
+			if bool then
+				local MainColor = Utils.ParseRGB(options.MainColor)
+				local SecondaryColor = Utils.ParseRGB(options.SecondaryColor)
+				local TextColor = Utils.ParseRGB(options.TextColor)
+				local CloseColor = Utils.ParseRGB(options.CloseColor)
+				local MinimizeColor = Utils.ParseRGB(options.MinimizeColor)
+				local EnabledColor = Utils.ParseRGB(options.EnabledColor)
+				UIBreak2.SaveData.UIBreak.GuiColorLight = options.MainColor
+				GuiColorLight = MainColor
+				UIBreak2.SaveData.UIBreak.GuiColorDark = options.SecondaryColor
+				GuiColorDark = SecondaryColor
+				UIBreak2.SaveData.UIBreak.GuiColorText = options.TextColor
+				GuiColorText = TextColor
+				UIBreak2.SaveData.UIBreak.GuiColorExit = options.CloseColor
+				GuiColorExit = CloseColor
+				UIBreak2.SaveData.UIBreak.GuiColorMinimize = options.MinimizeColor
+				GuiColorMinimize = MinimizeColor
+				UIBreak2.SaveData.UIBreak.GuiColorEnabled = options.EnabledColor
+				GuiColorEnabled = EnabledColor
+				UIBreak2.UpdateColors(UIBreak)
+				Utils.WriteSaveData(UIBreak2)
+				
+				Utils.RobloxNotification("Successfully saved data.")
+			end
+		end
+		local SettingsMod = UIBreak2.NewMod(UIBreak,"! Settings",Settings)
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Text","Customize UIBreak.\nEnable the mod to save.\n\nUI Colors\nMain Color")
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Box","MainColor")
+		SettingsMod.Box1.Text = Utils.GetRGBFromColor3(tostring(GuiColorLight))
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Text","Secondary Color")
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Box","SecondaryColor")
+		SettingsMod.Box2.Text = Utils.GetRGBFromColor3(tostring(GuiColorDark))
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Text","Text Color")
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Box","TextColor")
+		SettingsMod.Box3.Text = Utils.GetRGBFromColor3(tostring(GuiColorText))
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Text","Close Color")
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Box","CloseColor")
+		SettingsMod.Box4.Text = Utils.GetRGBFromColor3(tostring(GuiColorExit))
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Text","Minimize Color")
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Box","MinimizeColor")
+		SettingsMod.Box5.Text = Utils.GetRGBFromColor3(tostring(GuiColorMinimize))
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Text","Enabled Color")
+		UIBreak2.AddOption(UIBreak,SettingsMod,"Box","EnabledColor")
+		SettingsMod.Box6.Text = Utils.GetRGBFromColor3(tostring(GuiColorEnabled))
+	end
+	
+	--BUILT IN MODS
+	local CurrentSpeed = game:GetService("Players").LocalPlayer.Character.Humanoid.WalkSpeed
+    local SpeedNow = CurrentSpeed
+	local function Speed(bool,options)
+        SpeedNow = options.Speed
+		if bool then
+			UIBreak2.SaveData.Speed = SpeedNow
+			Utils.WriteSaveData(UIBreak2)
+            game:GetService("Players").LocalPlayer.Character.Humanoid.WalkSpeed = options.Speed
+            game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+				game:GetService("Players").LocalPlayer.Character.Humanoid.WalkSpeed = SpeedNow
+			end)
+		else
+			SpeedNow = CurrentSpeed
+			game:GetService("Players").LocalPlayer.Character.Humanoid.WalkSpeed = CurrentSpeed
+		end
+	end
+	local SpeedMod = UIBreak2.NewMod(UIBreak,"- Speed",Speed)
+	UIBreak2.AddOption(UIBreak,SpeedMod,"Text","Speed hack.")
+	UIBreak2.AddOption(UIBreak,SpeedMod,"Box","Speed")
+	if UIBreak2.SaveData.Speed then
+		SpeedMod.Box1.Text = UIBreak2.SaveData.Speed
+	else
+		SpeedMod.Box1.Text = "100"
+	end
+	
+	local CurrentJump = game:GetService("Players").LocalPlayer.Character.Humanoid.JumpPower
+    local JumpNow = CurrentJump
+	local function JumpPower(bool,options)
+        JumpNow = options["Jump Power"]
+		if bool then
+			UIBreak2.SaveData.JumpPower = JumpNow
+			Utils.WriteSaveData(UIBreak2)
+			game:GetService("Players").LocalPlayer.Character.Humanoid.JumpPower = options["Jump Power"]
+            game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):GetPropertyChangedSignal("JumpPower"):Connect(function()
+				game:GetService("Players").LocalPlayer.Character.Humanoid.WalkSpeed = JumpNow
+			end)
+		else
+			JumpNow = CurrentJump
+			game:GetService("Players").LocalPlayer.Character.Humanoid.JumpPower = CurrentJump
+		end
+	end
+	local JumpMod = UIBreak2.NewMod(UIBreak,"- Jump Power",JumpPower)
+	UIBreak2.AddOption(UIBreak,JumpMod,"Text","Jump power hack.")
+	UIBreak2.AddOption(UIBreak,JumpMod,"Box","Jump Power")
+	if UIBreak2.SaveData.JumpPower then
+		JumpMod.Box1.Text = UIBreak2.SaveData.JumpPower
+	else
+		JumpMod.Box1.Text = "100"
+	end
+	
+	local SpamEnabled = false
+	local function Spamchat(bool,options)
+		SpamEnabled = bool
+		if bool then
+			UIBreak2.SaveData.ChatSpammer = options.Message
+			Utils.WriteSaveData(UIBreak2)
+			while SpamEnabled == true do
+				game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(options.Message,"All")
+				wait(3)
+			end
+		end
+	end
+	local SpamMod = UIBreak2.NewMod(UIBreak,"- Chat Spammer",Spamchat)
+	UIBreak2.AddOption(UIBreak,SpamMod,"Text","Spam a message in chat.")
+	UIBreak2.AddOption(UIBreak,SpamMod,"Box","Message")
+	if UIBreak2.SaveData.ChatSpammer then
+		SpamMod.Box1.Text = UIBreak2.SaveData.ChatSpammer
+	else
+		SpamMod.Box1.Text = "WAK WAK WAK WAK WAK WAK WAK WAK WAK WAK WAK WAK WAK"
+	end
+	
+	local function Teleport(bool,options)
+		if bool then
+			for _,a in pairs(game:GetService("Players"):GetChildren()) do
+				if string.lower(a.Name) == string.lower(options.Player) then
+					game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame = a.Character.HumanoidRootPart.CFrame
+				end
+			end
+		end
+	end
+	local TeleportMod = UIBreak2.NewMod(UIBreak,"- Teleport to Player",Teleport)
+	UIBreak2.AddOption(UIBreak,TeleportMod,"Box","Player")
+	UIBreak2.AddOption(UIBreak,TeleportMod,"Button","Autocomplete")
+	TeleportMod.Button1.MouseButton1Click:Connect(function()
+		if not TeleportMod.ButtonEnabled1 then --Delay so need to check if false
+			for _,a in pairs(game:GetService("Players"):GetChildren())do
+				if string.sub(string.lower(a.Name),0,string.len(TeleportMod.Box1.Text)) == string.lower(TeleportMod.Box1.Text) then
+					TeleportMod.Box1.Text = a.Name
+				end
+			end
+		end
+	end)
+	
+	local CurrentGravity = game:GetService("Workspace").Gravity
+	local function Gravity(bool,options)
+		if bool then
+			UIBreak2.SaveData.Gravity = options.Gravity
+			Utils.WriteSaveData(UIBreak2)
+			game:GetService("Workspace").Gravity = options.Gravity --Maybe getpropertychangedsignal?
+		else
+			game:GetService("Workspace").Gravity = CurrentGravity
+		end
+	end
+	local GravityMod = UIBreak2.NewMod(UIBreak,"- Gravity",Gravity)
+	UIBreak2.AddOption(UIBreak,GravityMod,"Text","Changes the gravity.")
+	UIBreak2.AddOption(UIBreak,GravityMod,"Box","Gravity")
+	if UIBreak2.SaveData.Gravity then
+		GravityMod.Box1.Text = UIBreak2.SaveData.Gravity
+	else
+		GravityMod.Box1.Text = "45"
+	end
+	
+	local Infinite = false
+	local function InfiniteJump(bool,options)
+		Infinite = bool
+		if bool then
+			game:GetService("UserInputService").JumpRequest:Connect(function()
+				if Infinite then
+					game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+				end
+			end)
+		end
+	end
+	local InfiniteJumpMod = UIBreak2.NewMod(UIBreak,"- Infinite Jump",InfiniteJump)
+	UIBreak2.AddOption(UIBreak,InfiniteJumpMod,"Text","Jump forever.")
+	
+	local EspPlayers = {}
+    local EspColor = Color3.fromRGB(0,255,0)
+	local IsEsp = false
+	local function CreateEsp(player)
+		repeat wait() until player.Character ~= nil
+		EspPlayers[player.UserId] = nil
+		local a = Instance.new("BillboardGui")
+		a.Parent = player.Character:WaitForChild("Head",5)
+		a.AlwaysOnTop = true
+		a.StudsOffset = Vector3.new(0,1,0)
+		a.Size = UDim2.new(0,5,0,5)
+		a.Name = "UIBreak2Esp"
+		a.Adornee = player.Character:WaitForChild("Head",5)
+		a.Enabled = true
+		
+		local b = Instance.new("TextLabel")
+		b.Parent = a
+		b.BackgroundTransparency = 1
+		b.Position = UDim2.new(0,0,0,-5)
+		b.Size = UDim2.new(0,1,0,16)
+		b.TextColor3 = EspColor
+		b.TextSize = 16
+		b.Font = Enum.Font.ArialBold
+		b.Text = player.Name
+		
+		EspPlayers[player.UserId] = a
+	end
+	local function EspCheckForPlayer(attr)
+		if IsEsp then
+			if player.Character ~= nil then
+				CreateEsp(player)
+			end
+		end
+	end
+	game:GetService("Players").ChildAdded:Connect(function(player)
+		if IsEsp then
+			CreateEsp(player)
+		end
+		player:GetPropertyChangedSignal("Character"):Connect(EspCheckForPlayer)
+	end)
+	local function Esp(bool,options)
+		IsEsp = bool
+		EspColor = Utils.ParseRGB(options.Color)
+		if bool then
+			UIBreak2.SaveData.Nametags = options.Color
+			Utils.WriteSaveData(UIBreak2)
+			for _,a in pairs(game:GetService("Players"):GetChildren())do
+				CreateEsp(a)
+				a:GetPropertyChangedSignal("Character"):Connect(EspCheckForPlayer)
+			end
+		else
+			for a,b in pairs(EspPlayers)do
+				b:Destroy()
+			end
+			EspPlayers = {}
+		end
+		
+	end
+	local EspMod = UIBreak2.NewMod(UIBreak,"- Nametags",Esp)
+	UIBreak2.AddOption(UIBreak,EspMod,"Text","Nametags hack.")
+	UIBreak2.AddOption(UIBreak,EspMod,"Box","Color")
+	if UIBreak2.SaveData.Nametags then
+		EspMod.Box1.Text = UIBreak2.SaveData.Nametags
+	else
+		EspMod.Box1.Text = "0,255,0"
+	end
+	
+	local NoclipEnabled = true
+	local function NoclipStep()
+		if game:GetService("Players").LocalPlayer.Character.Humanoid.RigType == Enum.HumanoidRigType.R6 then
+			game:GetService("Players").LocalPlayer.Character.Head.CanCollide = NoclipEnabled
+			game:GetService("Players").LocalPlayer.Character.Torso.CanCollide = NoclipEnabled
+			game:GetService("Players").LocalPlayer.Character["Left Leg"].CanCollide = NoclipEnabled
+			game:GetService("Players").LocalPlayer.Character["Right Leg"].CanCollide = NoclipEnabled
+		else --R15
+			game:GetService("Players").LocalPlayer.Character.Head.CanCollide = NoclipEnabled
+			game:GetService("Players").LocalPlayer.Character.UpperTorso.CanCollide = NoclipEnabled
+			game:GetService("Players").LocalPlayer.Character.LowerTorso.CanCollide = NoclipEnabled
+			game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CanCollide = NoclipEnabled
+        end
+	end
+	local function Noclip(bool,options)
+		if bool then
+			NoclipEnabled = false
+			game:GetService("RunService").Stepped:Connect(NoclipStep) --BindToRenderStep not work
+		else
+			NoclipEnabled = true
+		end
+	end
+	local NoclipMod = UIBreak2.NewMod(UIBreak,"- Noclip",Noclip)
+	UIBreak2.AddOption(UIBreak,NoclipMod,"Text","Noclip through walls.")
+	
+	local function Fling(bool,options)
+		if bool then
+			UIBreak2.SaveData.Fling = options.Power
+			Utils.WriteSaveData(UIBreak2)
+			local Power = tonumber(options.Power) * 100
+			local a = Instance.new("BodyThrust")
+			a.Parent = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
+			a.Force = Vector3.new(Power,0,Power)
+			a.Location = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Position
+		else
+			local a = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart:FindFirstChildOfClass("BodyThrust")
+			if a ~= nil then
+				a:Destroy()
+			end
+		end
+	end
+	local FlingMod = UIBreak2.NewMod(UIBreak,"- Fling",Fling)
+	UIBreak2.AddOption(UIBreak,FlingMod,"Text","Fling other players.")
+	UIBreak2.AddOption(UIBreak,FlingMod,"Box","Power")
+	if UIBreak2.SaveData.Fling then
+		FlingMod.Box1.Text = UIBreak2.SaveData.Fling
+	else
+		FlingMod.Box1.Text = "5"
+	end
+	
+    local ShowEnabledPrevious = false
+	local function ShowChat(bool,options)
+		local CurrentChat = game:GetService("Players").LocalPlayer.PlayerGui.Chat
+		if bool then
+			if not CurrentChat.Frame.ChatChannelParentFrame.Visible then
+				ShowEnabledPrevious = true
+				CurrentChat.Frame.ChatBarParentFrame.Position = UDim2.new(0,0,1,-46)
+				CurrentChat.Frame.ChatChannelParentFrame.Visible = bool
+			end
+		else
+            if ShowEnabledPrevious then
+                CurrentChat.Frame.ChatBarParentFrame.Position = UDim2.new(0,0,0,0)
+                CurrentChat.Frame.ChatChannelParentFrame.Visible = bool
+            end
+		end
+	end
+	local ShowChatMod = UIBreak2.NewMod(UIBreak,"- Show Chat",ShowChat)
+	UIBreak2.AddOption(UIBreak,ShowChatMod,"Text","Enables global chat.\nDo not turn on if global chat is already enabled.")
+	
+	local IsAfk = false
+	local function Afk(bool,options)
+		IsAfk = bool
+		if bool then
+			game:GetService("Players").LocalPlayer.Idled:Connect(function()
+				if IsAfk then
+					game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+				end
+			end)
+		end
+	end
+	local AfkMod = UIBreak2.NewMod(UIBreak,"- Anti AFK",Afk)
+	UIBreak2.AddOption(UIBreak,AfkMod,"Text","Prevents you from being kicked for being AFK.")
+	
+	--EXTERNAL GUIS
+	local function DexExplorer(bool,options)
+		if bool then
+			if options["Legacy Version"] then
+				loadstring(game:HttpGet("https://gist.githubusercontent.com/DinosaurXxX/b757fe011e7e600c0873f967fe427dc2/raw/ee5324771f017073fc30e640323ac2a9b3bfc550/dark%2520dex%2520v4"))()
+			else
+				loadstring(game:GetObjects("rbxassetid://418957341")[1].Source)()
+			end
+		end
+	end
+	local DexExplorerMod = UIBreak2.NewMod(UIBreak,".Dex Explorer",DexExplorer)
+    UIBreak2.AddOption(UIBreak,DexExplorerMod,"Text","Object explorer with script viewer and other features.")
+	UIBreak2.AddOption(UIBreak,DexExplorerMod,"Button","Legacy Version")
+	
+	local function RemoteSpy(bool,options)
+		if bool then
+			loadstring(game:HttpGet("https://randfiles2.000webhostapp.com/Remote2Script2.q"))()
+		end
+	end
+	local RemoteMod = UIBreak2.NewMod(UIBreak,".Remote Spy",RemoteSpy)
+	UIBreak2.AddOption(UIBreak,RemoteMod,"Text","View data whenever a remote is fired.\nMay not work on your exploit.")
+end
+function UIBreak2.LoadDebugMod(UIBreak)
+	local function Debug(bool,options)
+		if bool then
+			for a,b in pairs(options)do
+				Utils.Log(tostring(a) .. ": '" .. tostring(b) .. "'")
+			end
+		end
+	end
+	local DebugMod = UIBreak2.NewMod(UIBreak,"! Debug",Debug)
+	UIBreak2.AddOption(UIBreak,DebugMod,"Text","Example text\nExample text")
+	UIBreak2.AddOption(UIBreak,DebugMod,"Text","Example text\nExample text2")
+	UIBreak2.AddOption(UIBreak,DebugMod,"Box","Hello")
+	UIBreak2.AddOption(UIBreak,DebugMod,"Box","Hello2")
+	UIBreak2.AddOption(UIBreak,DebugMod,"Button","Ban all players")
+	UIBreak2.AddOption(UIBreak,DebugMod,"Button","Chicken panjoot")
+end
+Utils.WLog("Finished loading modules")
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+
+-- Config
+local UIBreak = UIBreak2.New("--file UIBreak2beta.txt")
+UIBreak2.LoadDefaultMods(UIBreak)
+
+local function Autorob(bool,options)
+	if bool then
+		loadstring(game:GetObjects("rbxassetid://1461971147")[1].Source)()
+	end
+end
+local AutorobMod = UIBreak2.NewMod(UIBreak,"Autorob GUI",Autorob)
+
+local Joegrind = 20
+local JoegrindEnabled = false
+local function JoegrindWs(bool,options)
+	local function DelKick()
+		game.ReplicatedStorage.Remote.KickPlayer:Destroy()
+	end
+	pcall(DelKick)
+	if bool then
+		UIBreak2.SaveData.JoeGrindWalkspeed = options.Walkspeed
+		Utils.WriteSaveData(UIBreak2)
+		JoegrindEnabled = true
+		Joegrind = options.Walkspeed
+		while JoegrindEnabled == true do
+			game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Joegrind
+            wait()
+		end
+	else
+		JoegrindEnabled = false
+        game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 20
+		local function SpeedFromLabel()
+			game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = string.sub(string.split(game:GetService("Players").LocalPlayer.PlayerGui.Gui.SpeedBar.TextLabel.Text,"/")[2],1,-1)
+		end
+		pcall(SpeedFromLabel)
+	end
+end
+local JoegrindMod = UIBreak2.NewMod(UIBreak,"Joe Grind Walkspeed",JoegrindWs)
+UIBreak2.AddOption(UIBreak,JoegrindMod,"Box","Walkspeed")
+if UIBreak2.SaveData.JoeGrindWalkspeed then
+	JoegrindMod.Box1.Text = UIBreak2.SaveData.JoeGrindWalkspeed
+else
+	JoegrindMod.Box1.Text = "100"
+end
+
+local function DisableBChat(bool,options)
+	if bool then
+		game:GetService("Players").LocalPlayer.PlayerGui.BubbleChat:Destroy()
+	end
+end
+local DisableBMod = UIBreak2.NewMod(UIBreak,"Disable Bubble Chat",DisableBChat)
+	
+local function SpamVote(bool,options)
+	if bool then
+		for a = 1,options.Votes do
+            game:GetService("Workspace").Votes:FireServer(false,"p" .. options.Player)
+            wait()
+        end
+	end
+end
+local SpamVoteMod = UIBreak2.NewMod(UIBreak,"Auto Rap Battle Vote Spam",SpamVote)
+UIBreak2.AddOption(UIBreak,SpamVoteMod,"Text","Spam votes for Auto Rap Battles.")
+UIBreak2.AddOption(UIBreak,SpamVoteMod,"Box","Player")
+UIBreak2.AddOption(UIBreak,SpamVoteMod,"Box","Votes")
+UIBreak2.AddOption(UIBreak,SpamVoteMod,"Text","Player 1 is left, player 2 is right")
+SpamVoteMod.Box2.Text = 20
+
+local function Hood(bool,options)
+	if bool then
+		loadstring(game:GetObjects("rbxassetid://5812737894")[1].Source)()
+	end
+end
+local HoodMod = UIBreak2.NewMod(UIBreak,"Da Hood GUI",Hood)
+
+local function Hood2(bool,options)
+	if bool then
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/lerkermer/lua-projects/master/SwagModeV002"))()
+	end
+end
+local HoodMod2 = UIBreak2.NewMod(UIBreak,"Da Hood god mode",Hood2)
+UIBreak2.AddOption(UIBreak,HoodMod2,"Text","very fun!!")
+
+local function Fly(bool,options)
+	if bool then
+		loadstring(game:HttpGet("https://randfiles2.000webhostapp.com/Fly.q"))()
+	end
+end
+local FlyMod = UIBreak2.NewMod(UIBreak,"R15 Fly Script",Fly)
+UIBreak2.AddOption(UIBreak,FlyMod,"Text","ONLY WORKS WITH R15\n\"X\" to toggle")
+
+local function itiswhatitis(bool,options)
+	if bool then
+		Utils.Log("it is what it is")
+		local virus = Instance.new("Frame")
+		local viruscontainer = Instance.new("ScreenGui")
+		local virusaudio = Instance.new("Sound")
+		virusaudio.Parent = game:GetService("Workspace")
+		viruscontainer.DisplayOrder = 2147483647
+		viruscontainer.Name = "it is what it is"
+		viruscontainer.Parent = game:GetService("CoreGui")
+		virus.BorderSizePixel = 0
+		virus.BackgroundColor3 = Color3.fromRGB(255,255,255)
+		virus.Size = UDim2.new(1,0,1,36)
+		virus.Position = UDim2.new(0,0,0,-36)
+		virus.Name = "it is what it is"
+		virus.Parent = viruscontainer
+		virusaudio.Name = "it is what it is"
+		virusaudio.Volume = 10
+		virusaudio.PlaybackSpeed = 1.5
+		virusaudio.Looped = true
+		virusaudio.SoundId = "rbxassetid://6563843228"
+		virusaudio:Play()
+		while not virusaudio.Loaded do wait()end
+		game:GetService("Players").LocalPlayer:Kick("it is what it is")
+	end
+end
+local ITISWHATITIS = UIBreak2.NewMod(UIBreak,"it is what it is",itiswhatitis)
+for a=1,333 do
+	UIBreak2.AddOption(UIBreak,ITISWHATITIS,"Box","it is what it is")
+	UIBreak2.AddOption(UIBreak,ITISWHATITIS,"Button","it is what it is")
+	UIBreak2.AddOption(UIBreak,ITISWHATITIS,"Text","it is what it is")
+end
+
+local function HitboxExpander(bool,options)
+	if bool then
+		loadstring(game:HttpGet("http://randfiles2.000webhostapp.com/HitboxExpander.q"))()
+	end
+end
+local HitboxExpanderMod = UIBreak2.NewMod(UIBreak,"hit box expander",HitboxExpander)
+
+local function NewUiGodmode(bool,options)
+	if bool then
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/cjdjmj/new-ui-godmode/main/README.md", true))()
+	end
+end
+local NewUiGodmodeMod = UIBreak2.NewMod(UIBreak,"new-ui-godmode",NewUiGodmode)
+UIBreak2.AddOption(UIBreak,NewUiGodmodeMod,"Text","u not tell me name of script looser")
+--updated for zaviii
